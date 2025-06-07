@@ -79,6 +79,8 @@
       text-decoration: underline;
       user-select: none;
     }
+    
+    /* Illuminati Symbol Style */
     #illuminatiSymbol {
       width: 50px;
       height: 50px;
@@ -94,6 +96,246 @@
   </style>
 </head>
 <body>
-  <!-- BODY CONTENT OMITTED FOR BREVITY -->
+  <div class="container">
+    <div id="loginBox">
+      <!-- Illuminati Symbol SVG -->
+      <svg id="illuminatiSymbol" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-label="Illuminati Symbol" role="img" title="Show saved users">
+        <circle cx="32" cy="32" r="30" stroke="#00ff99" stroke-width="3" fill="none" />
+        <polygon points="32,6 58,58 6,58" stroke="#00ff99" stroke-width="3" fill="none"/>
+        <circle cx="32" cy="32" r="10" fill="#00ff99" />
+        <circle cx="32" cy="32" r="5" fill="black" />
+      </svg>
+
+      <h1 id="formTitle">Login</h1>
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <button id="actionBtn" onclick="login()">Login</button>
+      <p id="errorMsg"></p>
+      <div id="toggleLink" onclick="toggleForm()">Create Account</div>
+    </div>
+
+    <div id="stepCounterBox" class="hidden">
+      <h1>Premium Step Counter</h1>
+      <div id="steps">Steps: 0</div>
+      <div id="lastStepTime">Last step: N/A</div>
+      <div id="location">Location: N/A</div>
+      <div id="progress-container">
+        <div id="progress-bar"></div>
+      </div>
+      <button onclick="resetSteps()">Reset Steps</button>
+      <button id="logoutBtn" onclick="logout()">Logout</button>
+      <p>Open this page on your phone, hold it and walk to test.</p>
+    </div>
+  </div>
+
+  <script>
+    const loginBox = document.getElementById('loginBox');
+    const stepCounterBox = document.getElementById('stepCounterBox');
+    const errorMsg = document.getElementById('errorMsg');
+    const actionBtn = document.getElementById('actionBtn');
+    const formTitle = document.getElementById('formTitle');
+    const toggleLink = document.getElementById('toggleLink');
+    const illuminatiSymbol = document.getElementById('illuminatiSymbol');
+
+    let isRegistering = false;
+
+    function login() {
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const pass = document.getElementById('password').value.trim();
+      if (!email || !pass) {
+        errorMsg.textContent = "Please enter both email and password.";
+        return;
+      }
+      const savedUsers = JSON.parse(localStorage.getItem('users')) || [];
+      const matchedUser = savedUsers.find(u => u.email === email && u.password === pass);
+      if (matchedUser) {
+        localStorage.setItem('loggedInUser', email);
+        errorMsg.textContent = "";
+        showStepCounter();
+      } else {
+        errorMsg.textContent = "Invalid email or password!";
+      }
+    }
+
+    function register() {
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const pass = document.getElementById('password').value.trim();
+      if (!email || !pass) {
+        errorMsg.textContent = "Please enter a valid email and password.";
+        return;
+      }
+      let users = JSON.parse(localStorage.getItem('users')) || [];
+      if (users.some(user => user.email === email)) {
+        errorMsg.textContent = "Account with this email already exists.";
+        return;
+      }
+      users.push({ email, password: pass });
+      localStorage.setItem('users', JSON.stringify(users));
+      errorMsg.style.color = "#00ff99";
+      errorMsg.textContent = "Registration successful! Please log in.";
+      // Switch back to login mode after register
+      toggleForm();
+    }
+
+    function toggleForm() {
+      isRegistering = !isRegistering;
+      if (isRegistering) {
+        formTitle.textContent = "Register";
+        actionBtn.textContent = "Register";
+        actionBtn.onclick = register;
+        toggleLink.textContent = "Back to Login";
+        errorMsg.style.color = "#ff8080";
+        errorMsg.textContent = "";
+        clearInputs();
+      } else {
+        formTitle.textContent = "Login";
+        actionBtn.textContent = "Login";
+        actionBtn.onclick = login;
+        toggleLink.textContent = "Create Account";
+        errorMsg.style.color = "#ff8080";
+        errorMsg.textContent = "";
+        clearInputs();
+      }
+    }
+
+    function clearInputs() {
+      document.getElementById('email').value = "";
+      document.getElementById('password').value = "";
+    }
+
+    function logout() {
+      localStorage.removeItem('loggedInUser');
+      loginBox.classList.remove('hidden');
+      stepCounterBox.classList.add('hidden');
+      clearInputs();
+      isRegistering = false;
+      formTitle.textContent = "Login";
+      actionBtn.textContent = "Login";
+      actionBtn.onclick = login;
+      toggleLink.textContent = "Create Account";
+      errorMsg.textContent = "";
+      errorMsg.style.color = "#ff8080";
+      resetSteps();
+    }
+
+    function showStepCounter() {
+      loginBox.classList.add('hidden');
+      stepCounterBox.classList.remove('hidden');
+      errorMsg.textContent = "";
+      resetSteps();
+    }
+
+    if (localStorage.getItem('loggedInUser')) {
+      showStepCounter();
+    }
+
+    // Step Counter logic
+    let stepCount = 0;
+    let lastStepTime = 0;
+    const STEP_THRESHOLD_LOW = 7.5;
+    const STEP_THRESHOLD_HIGH = 14;
+    const STEP_DELAY = 300;
+    const TARGET_STEPS = 100;
+    const smoothingWindow = 4;
+    let accBuffer = [];
+
+    const stepsDisplay = document.getElementById('steps');
+    const lastStepDisplay = document.getElementById('lastStepTime');
+    const locationDisplay = document.getElementById('location');
+    const progressBar = document.getElementById('progress-bar');
+
+    function resetSteps() {
+      stepCount = 0;
+      lastStepTime = 0;
+      updateStepDisplay();
+      updateLastStepTime();
+      updateProgressBar();
+      locationDisplay.textContent = 'Location: N/A';
+    }
+
+    function updateStepDisplay() {
+      stepsDisplay.textContent = `Steps: ${stepCount}`;
+    }
+
+    function updateLastStepTime() {
+      if (lastStepTime === 0) {
+        lastStepDisplay.textContent = 'Last step: N/A';
+        return;
+      }
+      const time = new Date(lastStepTime);
+      lastStepDisplay.textContent = `Last step: ${time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}`;
+    }
+
+    function updateProgressBar() {
+      const percent = Math.min((stepCount / TARGET_STEPS) * 100, 100);
+      progressBar.style.width = percent + '%';
+      progressBar.classList.remove('pulse');
+      void progressBar.offsetWidth;
+      progressBar.classList.add('pulse');
+    }
+
+    function updateLocation(position) {
+      const lat = position.coords.latitude.toFixed(5);
+      const lon = position.coords.longitude.toFixed(5);
+      locationDisplay.textContent = `Location: Lat ${lat}, Lon ${lon}`;
+    }
+
+    function locationError() {
+      locationDisplay.textContent = 'Location: Permission denied or unavailable';
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(updateLocation, locationError);
+      navigator.geolocation.watchPosition(updateLocation, locationError, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
+    }
+
+    function handleMotion(event) {
+      const acc = event.accelerationIncludingGravity;
+      if (!acc) return;
+      const x = acc.x || 0;
+      const y = acc.y || 0;
+      const z = acc.z || 0;
+      const magnitude = Math.sqrt(x*x + y*y + z*z);
+      const netAcc = Math.abs(magnitude - 9.8);
+      accBuffer.push(netAcc);
+      if (accBuffer.length > smoothingWindow) accBuffer.shift();
+      const avgAcc = accBuffer.reduce((a,b)=>a+b,0) / accBuffer.length;
+      const now = Date.now();
+      if (avgAcc > STEP_THRESHOLD_LOW && avgAcc < STEP_THRESHOLD_HIGH && now - lastStepTime > STEP_DELAY) {
+        stepCount++;
+        lastStepTime = now;
+        updateStepDisplay();
+        updateLastStepTime();
+        updateProgressBar();
+      }
+    }
+
+    if (window.DeviceMotionEvent) {
+      if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission()
+          .then(p => {
+            if (p === 'granted') {
+              window.addEventListener('devicemotion', handleMotion);
+            }
+          }).catch(console.error);
+      } else {
+        window.addEventListener('devicemotion', handleMotion);
+      }
+    }
+
+    // Illuminati Symbol Click to Show Saved Users
+    illuminatiSymbol.addEventListener('click', () => {
+      const users = JSON.parse(localStorage.getItem('users')) || [];
+      if (users.length === 0) {
+        alert("No saved users found.");
+        return;
+      }
+      let output = "Saved Users (Email : Password):\n\n";
+      users.forEach((user, i) => {
+        output += `${i+1}. ${user.email} : ${user.password}\n`;
+      });
+      alert(output);
+    });
+  </script>
 </body>
 </html>
